@@ -1,1 +1,2 @@
-# esp32s2_examples
+# esp32s2 examples
+## Examples for ULP RISC-V processor 
