@@ -7,3 +7,4 @@ Handle some sensorboards for weather oberservation while deepsleep of main proce
  - sht30/31 (soon)
 
 The rtc-i2c-api is not implemented in IDF v4.4, so a bit by bit communication is used.
+The mainfocus ist set to RISC-V process. the main-CPU only initialises the ULP-Process und prints the results.
