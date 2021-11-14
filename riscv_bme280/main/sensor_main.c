@@ -91,7 +91,7 @@ void app_main(void) {
 			printf("t-acquis : %.dms\n", ulp_bme280_acquisition_time_ms);
 			printf("ulp-cycle: %d\n", ulp_bme280_cycles);
 			printf("Press: %.2fhPa | Temp: %.2f°C | Humi: %.2f%%\n",
-					ulp_bme280_pressure/100.0, ulp_bme280_temperature/100.0, ulp_bme280_humidity/1000.0);
+					ulp_bme280_pressure/100.0, (int32_t)ulp_bme280_temperature/100.0, ulp_bme280_humidity/1000.0);
 		}
 	} else {
 		printf ("Fehler BME280: %d\n", ulp_bme280_status);

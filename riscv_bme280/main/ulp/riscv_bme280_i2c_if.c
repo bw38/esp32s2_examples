@@ -233,8 +233,8 @@ int main (void) {
 
 	bme280_pressure = bme280_comp_data.pressure;			// pa
 	bme280_temperature = bme280_comp_data.temperature;		// °C * 100
-	bme280_humidity = bme280_comp_data.humidity;			//  % * 1000
-	if (bme280_humidity == 0) rslt |= 1 << 3;
+	bme280_humidity = bme280_comp_data.humidity;			// %  * 1000
+	if (bme280_humidity == 0) rslt |= 1 << 3;				// check plausibility
 	bme280_status = rslt;									// 0 == Ok
 	if (rslt != 0) first_run = 0; //force reset
 
