@@ -3,6 +3,7 @@
  *
  *  Created on: 2021-11-14
  *  Author    : Joerg / DL7VMD
+ *	License   : MIT
  *
  *  use actual driver from:
  *  https://github.com/BoschSensortec/BME280_driver
@@ -18,22 +19,22 @@
 #include "BME280_driver-master/bme280_defs.h"
 
 /*
- * #define BME280_32BIT_ENABLE	in bme280_defs.h setzen !!!
+ * #define BME280_32BIT_ENABLE	!!! set in bme280_defs.h !!!
  */
 
-#define ULP_RISCV_CYCLES_PER_US 8.5	//from "ulp_riscv_utils.h" (wg. Eclipse-Problem / IDF ok)
 
 //internal varibales
-static uint8_t dev_addr = 0;	//0x76 | 0x77
+static uint8_t dev_addr;
 static uint8_t first_run = 0;
 static struct bme280_data bme280_comp_data;
+//cache wakeup check
 static uint32_t mcycle = 0;
 static uint32_t mtemp = 0;
 static uint32_t mhumi = 0;
 static uint32_t mpres = 0;
 
 
-//external Variablen, from main ulp_xxxxx
+//external variables, access from main => ulp_xxxxx
 //results to main
 uint32_t bme280_humidity;
 uint32_t bme280_temperature;
@@ -172,7 +173,7 @@ int8_t bme280_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *
 
 //initialise chip after coldstart or device error
 int8_t bme280_i2c_init(struct bme280_dev *dev) {
-	dev_addr = BME280_I2C_ADDR_PRIM;	//SDO 10k Pulldown on Sensorboard
+	dev_addr = BME280_I2C_ADDR_PRIM;	//SDO 10k Pulldown on Sensorboard => addr = 0x76
 	dev->intf_ptr = &dev_addr;
 	dev->intf  = BME280_I2C_INTF;
 	dev->read  = bme280_i2c_read;
