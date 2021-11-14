@@ -108,8 +108,6 @@ void app_main(void) {
    	printf("Goto DeepSleep for %.3fs\n", INTERVAL_MS / 1000.0);
 
 	esp_deep_sleep_start();
-
-
 }
 
 

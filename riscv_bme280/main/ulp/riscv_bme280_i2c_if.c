@@ -152,7 +152,7 @@ int8_t bme280_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *
     tx_start_bit();
     tx_byte((dev_addr << 1) | 0x01);
     x |= rx_bit();
-    //Daten sequentiall lesen
+    //read data sequentially
 	uint8_t y;
 	for (int j = 0; j < len; j++) {
 		for (int i = 0; i < 8; i++) {
@@ -162,7 +162,7 @@ int8_t bme280_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *
 		reg_data[j] = y;
 		if (j < (len-1)) tx_ack_bit();
 	}
-	tx_nack_bit();	//letztes gelesenes Byte mit NACK quittieren
+	tx_nack_bit();	//last readed byte -> acknowledge with NACK
     tx_stop_bit();
     return x;
 }
@@ -170,38 +170,39 @@ int8_t bme280_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *
 
 // --------------------------------------------------------------------------------------------
 
-//Chip wird nach Kaltstart oder vorherg. Fehler initialisiert
+//initialise chip after coldstart or device error
 int8_t bme280_i2c_init(struct bme280_dev *dev) {
-	dev_addr = BME280_I2C_ADDR_PRIM;	//SDO 10k Pulldown auf Sensorboard
+	dev_addr = BME280_I2C_ADDR_PRIM;	//SDO 10k Pulldown on Sensorboard
 	dev->intf_ptr = &dev_addr;
 	dev->intf  = BME280_I2C_INTF;
 	dev->read  = bme280_i2c_read;
 	dev->write = bme280_i2c_write;
 	dev->delay_us = user_delay_us;
-	//sicherheitshalber SW-Reset
+	//safe side -> SW-Reset
 	const uint8_t com_res = BME280_SOFT_RESET_COMMAND;
 	bme280_i2c_write(BME280_RESET_ADDR, &com_res, 1, dev);
-	user_delay_us(5*1000, NULL); //2ms PowerOn-Reset
+	user_delay_us(5*1000, NULL); // > 2ms PowerOn-Reset
 
 	return (bme280_init(dev) << 1);
 }
 
 
 
-//Messung anstoßen, warten, Sensor-Daten lesen
-//duration 70ms
+//perform measurement an readinfg sensor-data
+//duration about 70ms
 int8_t stream_sensor_data_forced_mode(struct bme280_dev *dev) {
+	//inividaul setting, refer BME280-doc
 	dev->settings.osr_h = BME280_OVERSAMPLING_2X;
 	dev->settings.osr_p = BME280_OVERSAMPLING_8X;
 	dev->settings.osr_t = BME280_OVERSAMPLING_2X;
 	dev->settings.filter = BME280_FILTER_COEFF_OFF;
 
 	uint8_t settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-	//Oversampling und Filter setzen
+	//set oversampling und filter
 	int8_t rslt = bme280_set_sensor_settings(settings_sel, dev);
 	uint32_t req_delay_ms = bme280_cal_meas_delay(&dev->settings);
 	bme280_acquisition_time_ms = req_delay_ms;
-	//Messung anstoßen
+	//initiate measurement in force-mode (inividual)
 	rslt |= bme280_set_sensor_mode(BME280_FORCED_MODE, dev);
 	//wait for complete plus safty
 	dev->delay_us((req_delay_ms + 5) * 1000, dev->intf_ptr);
@@ -230,19 +231,18 @@ int main (void) {
 
 	rslt |= stream_sensor_data_forced_mode(&bme280_device);
 
-	//Anpassung der Ausgabegröße
 	bme280_pressure = bme280_comp_data.pressure;			// pa
 	bme280_temperature = bme280_comp_data.temperature;		// °C * 100
 	bme280_humidity = bme280_comp_data.humidity;			//  % * 1000
 	if (bme280_humidity == 0) rslt |= 1 << 3;
 	bme280_status = rslt;									// 0 == Ok
-	if (rslt != 0) first_run = 0; //Zwangsreset
+	if (rslt != 0) first_run = 0; //force reset
 
-    //Aufweckbedingungen
-    if ((++mcycle >= set_bme280_force_wake) ||							//max cycles seit letzter Meldung
-    	(abs(mtemp - bme280_temperature) >= set_bme280_thres_temp) ||	//nach Temperaturänderung
-		(abs(mhumi - bme280_humidity) >= set_bme280_thres_humi) || 		//nach Luftfeuchteänderung
-		(abs(mpres - bme280_pressure) >= set_bme280_thres_pres)) {		//nach Luftdruckänderung
+    //test wakeup conditions
+    if ((++mcycle >= set_bme280_force_wake) ||							//max cycles since last main-wakeup
+    	(abs(mtemp - bme280_temperature) >= set_bme280_thres_temp) ||	//delta temp
+		(abs(mhumi - bme280_humidity) >= set_bme280_thres_humi) || 		//delta humi
+		(abs(mpres - bme280_pressure) >= set_bme280_thres_pres)) {		//delta pres
     		mtemp = bme280_temperature;
     		mhumi = bme280_humidity;
     		mpres = bme280_pressure;
