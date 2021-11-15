@@ -1,17 +1,13 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
 #include "esp_event.h"
-#include "nvs_flash.h"
-#include "string.h"
 #include "esp_sleep.h"
 #include "esp_log.h"
 #include "esp32/ulp.h"
 #include "soc/rtc.h"
-#include "driver/rtc_io.h"
-#include "driver/gpio.h"
-//#include "driver/i2c.h"
 #include "esp32s2/ulp_riscv.h"
-#include "ulp_main.h"  //ulp_xxx.h wird automatisch generiert
+
+#include "ulp_main.h"  				//ulp_xxx.h automatically generated
 
 //wakeup-interval ulp
 #define INTERVAL_MS			5000

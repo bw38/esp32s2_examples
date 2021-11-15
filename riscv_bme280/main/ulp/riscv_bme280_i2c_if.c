@@ -72,8 +72,8 @@ static void init_gpio() {
 }
 
 
-// I2C - Bit & Byte - Ebene ----------------------------------------
-//Initial level = High -> Input (ext. PullUp) / aktiv Low => Input & Output (fix low)
+// I2C - Bit & Byte - level ----------------------------------------
+//Grundstellung High -> Input (ext. PullUp) / aktiv Low => Input & Output (fix low)
 #define SCL_L		ulp_riscv_gpio_output_enable(bme280_scl)
 #define SCL_H		ulp_riscv_gpio_output_disable(bme280_scl)
 #define X_SCL		ulp_riscv_gpio_get_level(bme280_scl)
