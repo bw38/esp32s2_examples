@@ -69,29 +69,28 @@ void app_main(void) {
     	init_ulp();	//ULP-Programm load
 
     	//main wakeup-conditions
-    	ulp_set_bme280_force_wake = MAX_FORCE_REPORT;
-    	ulp_set_bme280_thres_temp = TEMP_THRESHOLD * 100;
-    	ulp_set_bme280_thres_humi = HUMI_THRESHOLD * 1000;
-    	ulp_set_bme280_thres_pres = PRES_THRESHOLD * 100;
-    	ulp_bme280_sda = I2C_MASTER_SDA_IO;
-    	ulp_bme280_scl = I2C_MASTER_SCL_IO;
+    	ulp_set_bmp2_force_wake = MAX_FORCE_REPORT;
+    	ulp_set_bmp2_thres_temp = TEMP_THRESHOLD * 100;
+    	ulp_set_bmp2_thres_pres = PRES_THRESHOLD * 100;
+    	ulp_bmp2_sda = I2C_MASTER_SDA_IO;
+    	ulp_bmp2_scl = I2C_MASTER_SCL_IO;
 
 	} else {
     	//from DeepSleep
     	waked_up = true;
 	}
 
-	if (ulp_bme280_status == 0) {	//no error in last ulp-run
+	if (ulp_bmp2_status == 0) {	//no error in last ulp-run
 		if (waked_up) {
-			printf("Chip ID  : 0x%.2x\n", ulp_bme280_chip_id);
-			printf("t-acquis : %.dms\n", ulp_bme280_acquisition_time_ms);
-			printf("ulp-cycle: %d\n", ulp_bme280_cycles);
-			printf("Press: %.2fhPa | Temp: %.2f°C | Humi: %.2f%%\n",
-					ulp_bme280_pressure/100.0, (int32_t)ulp_bme280_temperature/100.0, ulp_bme280_humidity/1000.0);
+			printf("Chip ID  : 0x%.2x\n", ulp_bmp2_chip_id);
+			printf("t-acquis : %.dms\n", ulp_bmp2_acquisition_time_ms);
+			printf("ulp-cycle: %d\n", ulp_bmp2_cycles);
+			printf("Press: %.2fhPa | Temp: %.2f°C\n",
+					ulp_bmp2_pressure/100.0, (int32_t)ulp_bmp2_temperature/100.0);
 		}
 	} else {
-		printf ("Fehler BME280: %d\n", ulp_bme280_status);
-		printf("Chip ID: 0x%.2x\n",	ulp_bme280_chip_id);
+		printf ("Fehler BMP2: %d\n", ulp_bmp2_status);
+		printf("Chip ID: 0x%.2x\n",	ulp_bmp2_chip_id);
 	}
 
 	//reduce sleep-current

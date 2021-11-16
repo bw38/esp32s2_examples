@@ -26,7 +26,7 @@
 //internal varibales
 static uint8_t dev_addr;
 static uint8_t first_run = 0;
-static struct bmp2_data bmp280_comp_data;
+
 //cache wakeup check
 static uint32_t mcycle = 0;
 static uint32_t mtemp = 0;
@@ -36,50 +36,48 @@ static uint32_t mpres = 0;
 
 //external variables, access from main => ulp_xxxxx
 //results to main
-uint32_t bme280_humidity;
-uint32_t bme280_temperature;
-uint32_t bme280_pressure;
-uint32_t bme280_status;
-uint32_t bme280_chip_id = 0;
-uint32_t bme280_acquisition_time_ms;
-uint32_t bme280_cycles = 0;
+uint32_t bmp2_temperature;
+uint32_t bmp2_pressure;
+uint32_t bmp2_status;
+uint32_t bmp2_chip_id = 0;
+uint32_t bmp2_acquisition_time_ms;
+uint32_t bmp2_cycles = 0;
 //set individual from main
-uint32_t bme280_sda = 0;
-uint32_t bme280_scl = 0;
-uint32_t set_bme280_force_wake = 0;
-uint32_t set_bme280_thres_temp = 0;
-uint32_t set_bme280_thres_humi = 0;
-uint32_t set_bme280_thres_pres = 0;
+uint32_t bmp2_sda = 0;
+uint32_t bmp2_scl = 0;
+uint32_t set_bmp2_force_wake = 0;
+uint32_t set_bmp2_thres_temp = 0;
+uint32_t set_bmp2_thres_pres = 0;
 
 
 // HW - Initialisierung --------------------------------------------
 
 static void init_gpio() {
 	// Setup GPIO für bitweise I2C
-    ulp_riscv_gpio_init(bme280_sda);
-    ulp_riscv_gpio_input_enable(bme280_sda);
-    ulp_riscv_gpio_set_output_mode(bme280_sda, RTCIO_MODE_OUTPUT_OD);
-    ulp_riscv_gpio_pullup_disable(bme280_sda);
-    ulp_riscv_gpio_pulldown_disable(bme280_sda);
-    ulp_riscv_gpio_output_level(bme280_sda, 0);
+    ulp_riscv_gpio_init(bmp2_sda);
+    ulp_riscv_gpio_input_enable(bmp2_sda);
+    ulp_riscv_gpio_set_output_mode(bmp2_sda, RTCIO_MODE_OUTPUT_OD);
+    ulp_riscv_gpio_pullup_disable(bmp2_sda);
+    ulp_riscv_gpio_pulldown_disable(bmp2_sda);
+    ulp_riscv_gpio_output_level(bmp2_sda, 0);
 
-    ulp_riscv_gpio_init(bme280_scl);
-    ulp_riscv_gpio_input_enable(bme280_scl);
-    ulp_riscv_gpio_set_output_mode(bme280_scl, RTCIO_MODE_OUTPUT_OD);
-    ulp_riscv_gpio_pullup_disable(bme280_scl);
-    ulp_riscv_gpio_pulldown_disable(bme280_scl);
-    ulp_riscv_gpio_output_level(bme280_scl, 0);
+    ulp_riscv_gpio_init(bmp2_scl);
+    ulp_riscv_gpio_input_enable(bmp2_scl);
+    ulp_riscv_gpio_set_output_mode(bmp2_scl, RTCIO_MODE_OUTPUT_OD);
+    ulp_riscv_gpio_pullup_disable(bmp2_scl);
+    ulp_riscv_gpio_pulldown_disable(bmp2_scl);
+    ulp_riscv_gpio_output_level(bmp2_scl, 0);
 }
 
 
 // I2C - Bit & Byte - level ----------------------------------------
 //Grundstellung High -> Input (ext. PullUp) / aktiv Low => Input & Output (fix low)
-#define SCL_L		ulp_riscv_gpio_output_enable(bme280_scl)
-#define SCL_H		ulp_riscv_gpio_output_disable(bme280_scl)
-#define X_SCL		ulp_riscv_gpio_get_level(bme280_scl)
-#define SDA_L		ulp_riscv_gpio_output_enable(bme280_sda)
-#define SDA_H		ulp_riscv_gpio_output_disable(bme280_sda)
-#define X_SDA		ulp_riscv_gpio_get_level(bme280_sda)
+#define SCL_L		ulp_riscv_gpio_output_enable(bmp2_scl)
+#define SCL_H		ulp_riscv_gpio_output_disable(bmp2_scl)
+#define X_SCL		ulp_riscv_gpio_get_level(bmp2_scl)
+#define SDA_L		ulp_riscv_gpio_output_enable(bmp2_sda)
+#define SDA_H		ulp_riscv_gpio_output_disable(bmp2_sda)
+#define X_SDA		ulp_riscv_gpio_get_level(bmp2_sda)
 
 #define CLK			20 	//ca. 20kHz Takt (measured)
 #define T25			ulp_riscv_delay_cycles(CLK / 4)
@@ -125,7 +123,7 @@ static void tx_byte (uint8_t x) {
 
 // I2C - adjustment to BME280.h --------------------------------
 void user_delay_us(uint32_t period, void *intf_ptr) {
-	ulp_riscv_delay_cycles(period * 1000 * ULP_RISCV_CYCLES_PER_US);
+	ulp_riscv_delay_cycles(period * ULP_RISCV_CYCLES_PER_US);
 }
 
 int8_t bmp2_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr) {
@@ -172,7 +170,7 @@ int8_t bmp2_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *in
 // --------------------------------------------------------------------------------------------
 
 //initialise chip after coldstart or device error
-int8_t bmp280_i2c_init(struct bmp2_dev *dev) {
+int8_t bmp2_i2c_init(struct bmp2_dev *dev) {
 	dev_addr = BMP2_I2C_ADDR_PRIM;	//SDO 10k Pulldown on Sensorboard => addr = 0x76
 	dev->intf_ptr = &dev_addr;
 	dev->intf  = BMP2_I2C_INTF;
@@ -180,74 +178,74 @@ int8_t bmp280_i2c_init(struct bmp2_dev *dev) {
 	dev->write = bmp2_i2c_write;
 	dev->delay_us = user_delay_us;
 	//safe side -> SW-Reset
-	const uint8_t com_res = BMP2_SOFT_RESET_CMD;
-	bmp2_i2c_write(BMP2_REG_SOFT_RESET, &com_res, 1, dev);
-	user_delay_us(5000, NULL); // > 2ms PowerOn-Reset
+//	const uint8_t com_res = BMP2_SOFT_RESET_CMD;
+//	bmp2_i2c_write(BMP2_REG_SOFT_RESET, &com_res, 1, dev);
+//	user_delay_us(5000, NULL); // > 2ms PowerOn-Reset
 
-	return (bmp2_init(dev) << 1);
+	return bmp2_init(dev);
 }
+
 
 
 
 //perform measurement an readinfg sensor-data
 //duration about 70ms
 int8_t stream_sensor_data_forced_mode(struct bmp2_dev *dev) {
-	//inividaul setting, refer BME280-doc
-	dev->settings.osr_h = BMP2_OS_2X;
-	dev ->settings.osr_p = BME280_OVERSAMPLING_8X;
-	dev->settings.osr_t = BME280_OVERSAMPLING_2X;
-	dev->settings.filter = BME280_FILTER_COEFF_OFF;
+	int8_t rslt;
+	struct bmp2_config conf;
+	rslt = bmp2_get_config(&conf, dev);
+	conf.filter = BMP2_FILTER_OFF;
+	conf.os_mode = BMP2_OS_MODE_HIGH_RESOLUTION;
+	conf.odr = BMP2_ODR_250_MS;
+	rslt = bmp2_set_config(&conf, dev);
+	rslt = bmp2_set_power_mode(BMP2_POWERMODE_FORCED, &conf, dev);
+	uint32_t t_sampling;
+	bmp2_compute_meas_time(&t_sampling, &conf, dev);
 
-	uint8_t settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-	//set oversampling und filter
-	int8_t rslt = bme280_set_sensor_settings(settings_sel, dev);
-	uint32_t req_delay_ms = bme280_cal_meas_delay(&dev->settings);
-	bme280_acquisition_time_ms = req_delay_ms;
-	//initiate measurement in force-mode (inividual)
-	rslt |= bme280_set_sensor_mode(BME280_FORCED_MODE, dev);
-	//wait for complete plus safty
-	dev->delay_us((req_delay_ms + 5) * 1000, dev->intf_ptr);
+    int8_t idx = 1;
+    struct bmp2_status status;
+    struct bmp2_data comp_data;
 
-	rslt |= bme280_get_sensor_data(BME280_ALL, &bme280_comp_data, dev);
-	rslt |= bme280_set_sensor_mode(BME280_SLEEP_MODE, dev);
+    dev->delay_us(t_sampling, NULL);
 
+    rslt = bmp2_get_status(&status, dev);
+    if (status.measuring == BMP2_MEAS_DONE) {
+    	rslt = bmp2_get_sensor_data(&comp_data, dev);
+        bmp2_temperature = comp_data.temperature,
+        bmp2_pressure = comp_data.pressure;
+    }
 	return (rslt << 2);
 }
 
 
 int main (void) {
-	bme280_cycles++;
+	bmp2_cycles++;
 	init_gpio();
 	int8_t rslt = 0;
-	struct bme280_dev bme280_device;
+	struct bmp2_dev dev;
 
 	if (first_run == 0) {
-		rslt = bme280_i2c_init(&bme280_device);
+		rslt = bmp2_i2c_init(&dev);
 		first_run = 1;
 	}
 	//Chip-ID zur Info
-	uint8_t chip_id = 0;
-	rslt |= bme280_get_regs(BME280_CHIP_ID_ADDR, &chip_id, 1, &bme280_device);
-	bme280_chip_id = chip_id;
+	bmp2_chip_id =  dev.chip_id;
 
-	rslt |= stream_sensor_data_forced_mode(&bme280_device);
+//	rslt |= stream_sensor_data_forced_mode(&dev);
 
-	bme280_pressure = bme280_comp_data.pressure;			// pa
-	bme280_temperature = bme280_comp_data.temperature;		// °C * 100
-	bme280_humidity = bme280_comp_data.humidity;			// %  * 1000
-	if (bme280_humidity == 0) rslt |= 1 << 3;				// check plausibility
-	bme280_status = rslt;									// 0 == Ok
+	if (bmp2_pressure == 0) rslt |= 1 << 3;				// check plausibility
+	bmp2_status = rslt;									// 0 == Ok
 	if (rslt != 0) first_run = 0; //force reset
 
     //test wakeup conditions
-    if ((++mcycle >= set_bme280_force_wake) ||							//max cycles since last main-wakeup
-    	(abs(mtemp - bme280_temperature) >= set_bme280_thres_temp) ||	//delta temp
-		(abs(mhumi - bme280_humidity) >= set_bme280_thres_humi) || 		//delta humi
-		(abs(mpres - bme280_pressure) >= set_bme280_thres_pres)) {		//delta pres
-    		mtemp = bme280_temperature;
-    		mhumi = bme280_humidity;
-    		mpres = bme280_pressure;
+    if ((++mcycle >= set_bmp2_force_wake) ||							//max cycles since last main-wakeup
+    	(abs(mtemp - bmp2_temperature) >= set_bmp2_thres_temp) ||	//delta temp
+		(abs(mpres - bmp2_pressure) >= set_bmp2_thres_pres)) {		//delta pres
+    		mtemp = bmp2_temperature;
+    		mpres = bmp2_pressure;
     		mcycle = 0;
     	ulp_riscv_wakeup_main_processor();
     }
+
+	ulp_riscv_wakeup_main_processor();
 }

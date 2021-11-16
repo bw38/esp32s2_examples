@@ -25,7 +25,7 @@ set(ulp_app_name ulp_${COMPONENT_NAME})
 #    which should not be added to COMPONENT_SRCS.
 set(ulp_riscv_S_sources 
 		"ulp/riscv_bmp280_i2c_if.c"  
-		"ulp/BMP2_driver-master/bmp2.c"
+		"ulp/BMP2-Sensor-API-master/bmp2.c"
 )
 
 #
