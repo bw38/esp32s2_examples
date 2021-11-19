@@ -96,7 +96,7 @@ extern "C" {
 /******************************************************************************/
 /*! @name        Compiler switch macros Definitions                */
 /******************************************************************************/
-#define BMP2_32BIT_COMPENSATION
+#define BMP2_32BIT_COMPENSATION	//for ESP32S2 RISC-V
 
 #ifndef BMP2_64BIT_COMPENSATION /*< Check if 64bit (using BMP2_64BIT_COMPENSATION) is enabled */
 #ifndef BMP2_32BIT_COMPENSATION /*< Check if 32bit (using BMP2_32BIT_COMPENSATION) is enabled */

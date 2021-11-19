@@ -178,9 +178,9 @@ int8_t bmp2_i2c_init(struct bmp2_dev *dev) {
 	dev->write = bmp2_i2c_write;
 	dev->delay_us = user_delay_us;
 	//safe side -> SW-Reset
-//	const uint8_t com_res = BMP2_SOFT_RESET_CMD;
-//	bmp2_i2c_write(BMP2_REG_SOFT_RESET, &com_res, 1, dev);
-//	user_delay_us(5000, NULL); // > 2ms PowerOn-Reset
+	const uint8_t com_res = BMP2_SOFT_RESET_CMD;
+	bmp2_i2c_write(BMP2_REG_SOFT_RESET, &com_res, 1, dev);
+	user_delay_us(5000, NULL); // > 2ms PowerOn-Reset
 
 	return bmp2_init(dev);
 }
@@ -197,23 +197,25 @@ int8_t stream_sensor_data_forced_mode(struct bmp2_dev *dev) {
 	conf.filter = BMP2_FILTER_OFF;
 	conf.os_mode = BMP2_OS_MODE_HIGH_RESOLUTION;
 	conf.odr = BMP2_ODR_250_MS;
-	rslt = bmp2_set_config(&conf, dev);
-	rslt = bmp2_set_power_mode(BMP2_POWERMODE_FORCED, &conf, dev);
+	rslt |= bmp2_set_config(&conf, dev);
+	rslt |= bmp2_set_power_mode(BMP2_POWERMODE_FORCED, &conf, dev);
 	uint32_t t_sampling;
 	bmp2_compute_meas_time(&t_sampling, &conf, dev);
+	bmp2_acquisition_time_ms = t_sampling;
 
     int8_t idx = 1;
     struct bmp2_status status;
     struct bmp2_data comp_data;
 
-    dev->delay_us(t_sampling, NULL);
+    dev->delay_us(t_sampling + 5000, NULL);
 
-    rslt = bmp2_get_status(&status, dev);
+    rslt |= bmp2_get_status(&status, dev);
     if (status.measuring == BMP2_MEAS_DONE) {
-    	rslt = bmp2_get_sensor_data(&comp_data, dev);
+    	rslt |= bmp2_get_sensor_data(&comp_data, dev);
         bmp2_temperature = comp_data.temperature,
         bmp2_pressure = comp_data.pressure;
     }
+    else rslt |= 0x40;
 	return (rslt << 2);
 }
 
@@ -231,7 +233,7 @@ int main (void) {
 	//Chip-ID zur Info
 	bmp2_chip_id =  dev.chip_id;
 
-//	rslt |= stream_sensor_data_forced_mode(&dev);
+	rslt |= stream_sensor_data_forced_mode(&dev);
 
 	if (bmp2_pressure == 0) rslt |= 1 << 3;				// check plausibility
 	bmp2_status = rslt;									// 0 == Ok
