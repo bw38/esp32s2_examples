@@ -92,7 +92,7 @@ void app_main(void) {
 		printf("\n");
 
 		if (waked_up) {
-			printf ("Temp: %.2f°C | Humi: %.2f%%\n", ulp_sht31_temp/100.0, ulp_sht31_humi/100.0);
+			printf ("Temp: %.2f°C | Humi: %.2f%%\n", (int32_t)ulp_sht31_temp/100.0, ulp_sht31_humi/100.0);
 		}
 
 	} else {
@@ -102,6 +102,7 @@ void app_main(void) {
 	//reduce sleep-current
 	//do not use on inputs ! (increases current !)
 //	rtc_gpio_isolate(GPIO_NUM_15);
+
 
 	esp_deep_sleep_disable_rom_logging();
     ulp_set_wakeup_period(0, INTERVAL_MS *1000);  //ulp starten nach x ms
