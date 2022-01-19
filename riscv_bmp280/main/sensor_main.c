@@ -80,16 +80,16 @@ void app_main(void) {
     	waked_up = true;
 	}
 
+
 	if (ulp_bmp2_status == 0) {	//no error in last ulp-run
 		if (waked_up) {
 			printf("Chip ID  : 0x%.2x\n", ulp_bmp2_chip_id);
-			printf("t-acquis : %.3fms\n", ulp_bmp2_acquisition_time_ms/1000.0);
 			printf("ulp-cycle: %d\n", ulp_bmp2_cycles);
 			printf("Press: %.2fhPa | Temp: %.2f°C\n",
 					ulp_bmp2_pressure/100.0, (int32_t)ulp_bmp2_temperature/100.0);
 		}
 	} else {
-		printf ("Fehler BMP2: %d\n", ulp_bmp2_status);
+		printf ("Fehler BMP2: %.2X\n", ulp_bmp2_status);
 		printf("Chip ID: 0x%.2x\n",	ulp_bmp2_chip_id);
 	}
 

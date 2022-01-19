@@ -15,6 +15,7 @@
 #include "ulp_riscv/ulp_riscv_utils.h"
 #include "ulp_riscv/ulp_riscv_gpio.h"
 
+
 #include "BMP2-Sensor-API-master/bmp2.h"
 #include "BMP2-Sensor-API-master/bmp2_defs.h"
 
@@ -30,7 +31,6 @@ static uint8_t first_run = 0;
 //cache wakeup check
 static uint32_t mcycle = 0;
 static uint32_t mtemp = 0;
-static uint32_t mhumi = 0;
 static uint32_t mpres = 0;
 
 
@@ -40,7 +40,6 @@ uint32_t bmp2_temperature;
 uint32_t bmp2_pressure;
 uint32_t bmp2_status;
 uint32_t bmp2_chip_id = 0;
-uint32_t bmp2_acquisition_time_ms;
 uint32_t bmp2_cycles = 0;
 //set individual from main
 uint32_t bmp2_sda = 0;
@@ -170,53 +169,55 @@ int8_t bmp2_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *in
 // --------------------------------------------------------------------------------------------
 
 //initialise chip after coldstart or device error
-int8_t bmp2_i2c_init(struct bmp2_dev *dev) {
+int8_t bmp2_i2c_init(struct bmp2_dev *pdev) {
 	dev_addr = BMP2_I2C_ADDR_PRIM;	//SDO 10k Pulldown on Sensorboard => addr = 0x76
-	dev->intf_ptr = &dev_addr;
-	dev->intf  = BMP2_I2C_INTF;
-	dev->read  = bmp2_i2c_read;
-	dev->write = bmp2_i2c_write;
-	dev->delay_us = user_delay_us;
+	pdev->intf_ptr = &dev_addr;
+	pdev->intf  = BMP2_I2C_INTF;
+	pdev->read  = bmp2_i2c_read;
+	pdev->write = bmp2_i2c_write;
+	pdev->delay_us = user_delay_us;
 	//safe side -> SW-Reset
 	const uint8_t com_res = BMP2_SOFT_RESET_CMD;
-	bmp2_i2c_write(BMP2_REG_SOFT_RESET, &com_res, 1, dev);
+	bmp2_i2c_write(BMP2_REG_SOFT_RESET, &com_res, 1, pdev);
 	user_delay_us(5000, NULL); // > 2ms PowerOn-Reset
 
-	return bmp2_init(dev);
+	return bmp2_init(pdev);
 }
 
 
 
 
-//perform measurement an readinfg sensor-data
-//duration about 70ms
-int8_t stream_sensor_data_forced_mode(struct bmp2_dev *dev) {
-	int8_t rslt;
+//perform measurement an reading sensor-data
+int8_t stream_sensor_data_forced_mode(struct bmp2_dev *pdev) {
+	int8_t res;
 	struct bmp2_config conf;
-	rslt = bmp2_get_config(&conf, dev);
+//	res = bmp2_get_config(&conf, pdev);
 	conf.filter = BMP2_FILTER_OFF;
-	conf.os_mode = BMP2_OS_MODE_HIGH_RESOLUTION;
-	conf.odr = BMP2_ODR_250_MS;
-	rslt |= bmp2_set_config(&conf, dev);
-	rslt |= bmp2_set_power_mode(BMP2_POWERMODE_FORCED, &conf, dev);
-	uint32_t t_sampling;
-	bmp2_compute_meas_time(&t_sampling, &conf, dev);
-	bmp2_acquisition_time_ms = t_sampling;
+	conf.os_mode = BMP2_OS_MODE_STANDARD_RESOLUTION;
+	conf.odr = 0; //BMP2_ODR_250_MS;
+	conf.os_pres = BMP2_OS_1X;
+	conf.os_temp = BMP2_OS_1X;
+	conf.spi3w_en = BMP2_SPI3_WIRE_DISABLE;
 
-    int8_t idx = 1;
-    struct bmp2_status status;
-    struct bmp2_data comp_data;
+//	res |= bmp2_set_config(&conf, pdev);
+	res |= bmp2_set_power_mode(BMP2_POWERMODE_FORCED, &conf, pdev);
 
-    dev->delay_us(t_sampling + 5000, NULL);
-
-    rslt |= bmp2_get_status(&status, dev);
-    if (status.measuring == BMP2_MEAS_DONE) {
-    	rslt |= bmp2_get_sensor_data(&comp_data, dev);
-        bmp2_temperature = comp_data.temperature,
-        bmp2_pressure = comp_data.pressure;
+	//wait for acquisition
+    uint8_t n = 0;
+	struct bmp2_status status;
+    do {
+    	if (n++ > 20) return (-1);	//emergency exit
+    	pdev->delay_us(5000, NULL);	//check every 5ms
+    	bmp2_get_status(&status, pdev);
     }
-    else rslt |= 0x40;
-	return (rslt << 2);
+    while (status.measuring != BMP2_MEAS_DONE);
+
+    struct bmp2_data comp_data;
+   	res |= bmp2_get_sensor_data(&comp_data, pdev);
+    bmp2_temperature = comp_data.temperature,
+    bmp2_pressure = comp_data.pressure;
+
+	return (res);
 }
 
 
@@ -228,15 +229,13 @@ int main (void) {
 
 	if (first_run == 0) {
 		rslt = bmp2_i2c_init(&dev);
+		bmp2_chip_id =  dev.chip_id;	//Chip-ID zur Info
 		first_run = 1;
 	}
-	//Chip-ID zur Info
-	bmp2_chip_id =  dev.chip_id;
 
 	rslt |= stream_sensor_data_forced_mode(&dev);
 
-	if (bmp2_pressure == 0) rslt |= 1 << 3;				// check plausibility
-	bmp2_status = rslt;									// 0 == Ok
+	bmp2_status = (uint8_t)rslt;						// 0 == Ok
 	if (rslt != 0) first_run = 0; //force reset
 
     //test wakeup conditions
@@ -248,6 +247,4 @@ int main (void) {
     		mcycle = 0;
     	ulp_riscv_wakeup_main_processor();
     }
-
-	ulp_riscv_wakeup_main_processor();
 }
