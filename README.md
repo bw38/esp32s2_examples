@@ -3,7 +3,7 @@
 
 Handle some sensorboards for weather oberservation while deepsleep of main processor
 
- - bmp280 (comming soon)
+ - bmp280
  - bme280
  - sht30/31
 
